@@ -61,7 +61,7 @@ uploaded_file = st.sidebar.file_uploader("CSVファイルをアップロード�
 if uploaded_file is not None:
     try:
         # ヘッダーが4行目にあるので、skiprows=3として読み込む（エンコーディングはcp932を想定、必要に応じて変更）
-        df = pd.read_csv(uploaded_file, skiprows=3, encoding='cp932')
+        df = pd.read_csv(uploaded_file, skiprows=3, encoding='utf-8-sig')
         st.write("### アップロードされたデータ（一部）")
         st.dataframe(df.head())
     except Exception as e:
