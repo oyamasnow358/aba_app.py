@@ -38,7 +38,7 @@ st.write("""
 """)
 st.download_button(
     label="CSVテンプレートをダウンロード",
-    data=template_csv,
+    data=template_csv.encode('utf-8-sig'),  # utf-8-sigでエンコード
     file_name="aba_template.csv",
     mime="text/csv"
 )
@@ -54,7 +54,7 @@ st.write("""
 """)
 
 # ------------------------------------------
-# CSVファイルアップロードとデータ読み込みsex
+# CSVファイルアップロードとデータ読み込み
 st.sidebar.header("1. データのアップロード")
 uploaded_file = st.sidebar.file_uploader("CSVファイルをアップロード（ヘッダーは4行目）", type=["csv"])
 
