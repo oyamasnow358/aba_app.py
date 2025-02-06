@@ -22,7 +22,7 @@ template_csv = """このCSVファイルは、応用行動分析のデータひ�
 '- 備考: その他の記録（任意）
 '
 
-ID,日時,対象行動,頻度,持続時間,強度,フェーズ,備考
+ID,日時,対象行動,頻度,持続時間(分),強度,フェーズ,備考
 1,2023-06-15 14:30,問題行動,3,45,4,介入前,注意が必要
 2,2023-06-15 15:00,適応行動,5,60,2,介入前,良好
 3,2023-06-16 10:15,問題行動,2,30,5,介入後,環境の変化あり
@@ -176,8 +176,8 @@ if uploaded_file is not None:
         st.subheader("行動持続時間の統計")
         avg_duration = df_filtered['持続時間'].mean()
         total_duration = df_filtered['持続時間'].sum()
-        st.write(f"全体の平均持続時間： **{avg_duration:.2f}** 単位")
-        st.write(f"全体の総持続時間： **{total_duration:.2f}** 単位")
+        st.write(f"全体の平均持続時間： **{avg_duration:.2f}** 分")
+        st.write(f"全体の総持続時間： **{total_duration:.2f}** 分")
     else:
         st.info("『持続時間』の列が存在しないため、持続時間の統計は表示されません。")
 
