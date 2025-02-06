@@ -54,7 +54,7 @@ st.write("""
 """)
 
 # ------------------------------------------
-# CSVファイルアップロードとデータ読み込み
+# CSVファイルアップロードとデータ読み込みsex
 st.sidebar.header("1. データのアップロード")
 uploaded_file = st.sidebar.file_uploader("CSVファイルをアップロード（ヘッダーは4行目）", type=["csv"])
 
