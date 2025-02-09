@@ -67,6 +67,75 @@ st.write("""
 st.sidebar.header("1. データのアップロード")
 uploaded_file = st.sidebar.file_uploader("CSVファイルをアップロード", type=["csv"])
 
+import os
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib.font_manager as fm
+
+# フォント設定
+font_path = os.path.abspath("ipaexg.ttf")  # 絶対パス
+if os.path.exists(font_path):
+    font_prop = fm.FontProperties(fname=font_path)
+    mpl.rcParams["font.family"] = font_prop.get_name()
+    plt.rc("font", family=font_prop.get_name())  # グローバル設定
+else:
+    st.warning("❌ フォントファイルが見つかりません。デフォルトフォントを使用します。")
+    mpl.rcParams["font.family"] = "sans-serif"
+    mpl.rcParams["font.sans-serif"] = ["Hiragino Maru Gothic Pro", "Yu Gothic", "Meiryo", "MS Gothic", "TakaoPGothic"]
+# ------------------------------------------
+# CSVテンプレート作成用の文字列（例）
+template_csv = """このCSVファイルは、応用行動分析のデータひな形です。"
+"15行以降に実際のデータを入力してください。"
+
+'【各列の説明】
+'- ID: レコード番号（任意）
+'- 日時: 行動が記録された日付・時刻（例: 2023-06-15 14:30）
+'- 対象行動: 行動の種類（例: 問題行動、適応行動、要求行動など）
+'- 頻度: その行動が発生した回数（数値）
+'- 持続時間: 行動の持続時間（秒などの数値）
+'- 強度: 行動の強度（例: 1〜5の評価）
+'- フェーズ: 介入などのフェーズ区分（例: 介入前、介入後）
+'- 備考: その他の記録（任意）
+'
+
+ID,日時,対象行動,頻度,持続時間(分),強度,フェーズ,備考
+1,2023-06-15 14:30,問題行動,3,45,4,介入前,注意が必要
+2,2023-06-15 15:00,適応行動,5,60,2,介入前,良好
+3,2023-06-16 10:15,問題行動,2,30,5,介入後,環境の変化あり
+"""
+
+# ------------------------------------------
+# タイトル・説明の表示
+st.title("応用行動分析 WEB アプリ")
+st.markdown("### CSVテンプレートのダウンロード")
+st.write("""
+以下のボタンをクリックすると、応用行動分析用のCSVファイルひな形をダウンロードできます。  
+※ このテンプレートでは、**最初の3行**に各項目の説明が書かれており、**4行目以降**に実データを入力してください。
+""")
+st.download_button(
+    label="CSVテンプレートをダウンロード",
+    data=template_csv.encode('utf-8-sig'),  # utf-8-sigでエンコード
+    file_name="aba_template.csv",
+    mime="text/csv"
+)
+
+st.markdown("---")
+st.markdown("### 応用行動分析の実行方法")
+st.write("""
+1. サイドバーから、上記テンプレートに沿った形式のCSVファイルをアップロードしてください。  
+2. アップロード後、入力された定量データ（回数、持続時間など）に基づき、グラフが自動更新されます。  
+    - **時系列グラフ**：介入前後の変化やセッションごとのばらつきが視覚的に確認できます。  
+    - **フェーズ切替表示**：「フェーズ」列がある場合、フェーズの切替点に垂直線が表示され、介入効果がわかりやすくなります。  
+3. グラフの下部に分析結果のサマリレポートが出力され、支援者が今後のプランに反映できる情報を提供します。
+""")
+
+# ------------------------------------------
+# CSVファイルアップロードとデータ読み込み
+st.sidebar.header("1. データのアップロード")
+uploaded_file = st.sidebar.file_uploader("CSVファイルをアップロード", type=["csv"])
+
 if uploaded_file is not None:
     try:
         # ヘッダーが4行目にあるので、skiprows=3として読み込む（エンコーディングはcp932を想定、必要に応じて変更）
@@ -151,8 +220,17 @@ else:
 
         # 円グラフ描画
         fig2, ax2 = plt.subplots(figsize=(6, 6))
-        ax2.pie(behavior_counts['件数'], labels=behavior_counts['対象行動'], autopct='%1.1f%%', startangle=90)
-        ax2.set_title("各対象行動の割合")
+        colors = plt.cm.tab10.colors  # カラーマップ適用
+
+        ax2.pie(
+           behavior_counts['件数'],
+           labels=behavior_counts['対象行動'],
+           autopct=lambda p: '{:.1f}%'.format(p) if p > 0 else '',  # 0% の場合ラベルを非表示
+           startangle=90,
+           colors=colors,  # 色設定
+           textprops={'fontproperties': font_prop}  # 日本語フォント適用
+        )
+        ax2.set_title("各対象行動の割合", fontproperties=font_prop)
         st.pyplot(fig2)
         st.write("""
 **図の見方：**
@@ -226,4 +304,4 @@ else:
         mime="text/plain"
     )
 else:
-    st.info("サイドバーからCSVファイルをアップロードしてください。")
+st.info("サイドバーからCSVファイルをアップロードしてください。")
