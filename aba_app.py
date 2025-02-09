@@ -8,9 +8,15 @@ from datetime import datetime
 import matplotlib.font_manager as fm
 
 # 日本語フォントのパスを指定
-font_path = "C:/Users/taka/OneDrive/デスクトップ/アプリ開発/応用行動分析/aba_app/ipaexg.ttf"  # フォントのパスを適宜変更
-font_prop = fm.FontProperties(fname=font_path)
-plt.rcParams["font.family"] = font_prop.get_name()
+# フォント設定
+font_path = os.path.abspath("ipaexg.ttf")  # 絶対パス
+if os.path.exists(font_path):
+    font_prop = fm.FontProperties(fname=font_path)
+    mpl.rcParams["font.family"] = font_prop.get_name()
+    plt.rc("font", family=font_prop.get_name())  # 追加
+    st.write(f"✅ フォント設定: {mpl.rcParams['font.family']}")
+else:
+    st.error("❌ フォントファイルが見つかりません。")
 # ------------------------------------------
 # CSVテンプレート作成用の文字列（例）
 template_csv = """このCSVファイルは、応用行動分析のデータひな形です。"
