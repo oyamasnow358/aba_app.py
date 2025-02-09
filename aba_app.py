@@ -10,8 +10,7 @@ font_path = os.path.abspath("ipaexg.ttf")  # 絶対パス
 if os.path.exists(font_path):
     font_prop = fm.FontProperties(fname=font_path)
     mpl.rcParams["font.family"] = font_prop.get_name()
-    plt.rc("font", family=font_prop.get_name())  # 追加
-    st.write(f"✅ フォント設定: {mpl.rcParams['font.family']}")
+    plt.rc("font", family=font_prop.get_name())  # グローバル設定
 else:
     st.warning("❌ フォントファイルが見つかりません。デフォルトフォントを使用します。")
     mpl.rcParams["font.family"] = "sans-serif"
@@ -112,17 +111,18 @@ if uploaded_file is not None:
         st.dataframe(freq_df.head())
 
         # グラフ描画（例: 折れ線グラフ）
-    fig, ax = plt.subplots(figsize=(10, 5))
-    for behavior in freq_df['対象行動'].unique():
-        data = freq_df[freq_df['対象行動'] == behavior]
-        ax.plot(data['日付'], data['頻度'], marker='o', label=behavior)
+    # グラフ描画部分の修正（直接FontPropertiesを指定）
+        fig, ax = plt.subplots(figsize=(10, 5))
+        for behavior in freq_df['対象行動'].unique():
+         data = freq_df[freq_df['対象行動'] == behavior]
+         ax.plot(data['日付'], data['頻度'], marker='o', label=behavior)
+        # 軸やラベル、タイトルにFontPropertiesを明示的に指定
+        ax.set_xlabel("日付", fontproperties=font_prop)
+        ax.set_ylabel("頻度", fontproperties=font_prop)
+        ax.set_title("日付別 行動頻度の推移", fontproperties=font_prop)
+        ax.legend(prop=font_prop)
 
-        ax.set_xlabel("日付")
-        ax.set_ylabel("頻度")
-        ax.set_title("日付別 行動頻度の推移")
-        ax.legend()
         st.pyplot(fig)
-        
         # -------------------------------
         # 介入フェーズ（またはその他フェーズ）の切替点があれば、垂直線で表示
         if 'フェーズ' in df_filtered.columns:
