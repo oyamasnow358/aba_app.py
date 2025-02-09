@@ -1,13 +1,10 @@
+import os
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
-from io import StringIO
-from datetime import datetime
+import matplotlib as mpl
 import matplotlib.font_manager as fm
 
-# 日本語フォントのパスを指定
 # フォント設定
 font_path = os.path.abspath("ipaexg.ttf")  # 絶対パス
 if os.path.exists(font_path):
@@ -16,7 +13,9 @@ if os.path.exists(font_path):
     plt.rc("font", family=font_prop.get_name())  # 追加
     st.write(f"✅ フォント設定: {mpl.rcParams['font.family']}")
 else:
-    st.error("❌ フォントファイルが見つかりません。")
+    st.warning("❌ フォントファイルが見つかりません。デフォルトフォントを使用します。")
+    mpl.rcParams["font.family"] = "sans-serif"
+    mpl.rcParams["font.sans-serif"] = ["Hiragino Maru Gothic Pro", "Yu Gothic", "Meiryo", "MS Gothic", "TakaoPGothic"]
 # ------------------------------------------
 # CSVテンプレート作成用の文字列（例）
 template_csv = """このCSVファイルは、応用行動分析のデータひな形です。"
