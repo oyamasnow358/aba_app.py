@@ -75,7 +75,7 @@ if uploaded_file is not None:
     except Exception as e:
         st.error(f"ファイル読み込みエラー: {e}")
         st.stop()
-    
+    # 日時項目の変換
     # 日時項目の変換
     if '日時' in df.columns:
         try:
