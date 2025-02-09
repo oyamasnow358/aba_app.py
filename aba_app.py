@@ -105,7 +105,7 @@ if uploaded_file is not None:
         freq_df = df_filtered.groupby(['日付', '対象行動'])['頻度'].sum().reset_index()
         st.dataframe(freq_df.head())
 
-        # グラフ描画
+       # グラフ描画
         fig, ax = plt.subplots(figsize=(10, 5))
         for behavior in freq_df['対象行動'].unique():
             data = freq_df[freq_df['対象行動'] == behavior]
@@ -115,7 +115,6 @@ if uploaded_file is not None:
         ax.set_ylabel("頻度", fontproperties=font_prop)
         ax.set_title("日付別 行動頻度の推移", fontproperties=font_prop)
         ax.legend(prop=font_prop)
-        st.pyplot(fig)
 
         # フェーズの境界線を追加
         if 'フェーズ' in df_filtered.columns:
@@ -128,10 +127,13 @@ if uploaded_file is not None:
                     phase_boundaries.append(row['日時'])
                     previous_phase = current_phase
             for boundary in phase_boundaries:
-                ax.axvline(boundary.date(), color='red', linestyle='--', alpha=0.7)
+                ax.axvline(boundary, color='red', linestyle='--', alpha=0.7)
             st.write("※ 赤い破線はフェーズ切替点を示しています。")
+        
+        st.pyplot(fig)
     else:
         st.warning("『対象行動』および『頻度』の列が見つかりません。")
+
 
     # 各対象行動の割合
     if '対象行動' in df_filtered.columns:
@@ -164,11 +166,12 @@ if uploaded_file is not None:
     else:
         st.info("『強度』の列が存在しないため、統計は表示されません。")
 
-    # 持続時間の統計
-    if '持続時間' in df_filtered.columns:
+    # 持続時間の統計（カラム名の修正）
+    duration_col = '持続時間(分)' if '持続時間(分)' in df_filtered.columns else '持続時間'
+    if duration_col in df_filtered.columns:
         st.subheader("行動持続時間の統計")
-        avg_duration = df_filtered['持続時間'].mean()
-        total_duration = df_filtered['持続時間'].sum()
+        avg_duration = df_filtered[duration_col].mean()
+        total_duration = df_filtered[duration_col].sum()
         st.write(f"全体の平均持続時間： **{avg_duration:.2f}** 分")
         st.write(f"全体の総持続時間： **{total_duration:.2f}** 分")
     else:
