@@ -103,58 +103,43 @@ if uploaded_file is not None:
 
     # -------------------------------
     # ① 期間別の行動頻度（対象行動ごとの回数集計）
-    if '対象行動' in df_filtered.columns and '頻度' in df_filtered.columns:
-        st.subheader("期間別の行動頻度")
-        # 日付毎、または対象行動毎に集計
-        df_filtered['日付'] = df_filtered['日時'].dt.date
-        freq_df = df_filtered.groupby(['日付', '対象行動'])['頻度'].sum().reset_index()
-        st.dataframe(freq_df.head())
+if '対象行動' in df_filtered.columns and '頻度' in df_filtered.columns:
+    st.subheader("期間別の行動頻度")
+    df_filtered['日付'] = df_filtered['日時'].dt.date
+    freq_df = df_filtered.groupby(['日付', '対象行動'])['頻度'].sum().reset_index()
+    st.dataframe(freq_df.head())
 
-        # グラフ描画（例: 折れ線グラフ）
-          #グラフ描画部分の修正（直接FontPropertiesを指定）
+    # グラフ描画
     fig, ax = plt.subplots(figsize=(10, 5))
     for behavior in freq_df['対象行動'].unique():
         data = freq_df[freq_df['対象行動'] == behavior]
         ax.plot(data['日付'], data['頻度'], marker='o', label=behavior)
 
-# 軸やラベル、タイトルにFontPropertiesを明示的に指定
+    # 軸ラベルとタイトル
     ax.set_xlabel("日付", fontproperties=font_prop)
     ax.set_ylabel("頻度", fontproperties=font_prop)
     ax.set_title("日付別 行動頻度の推移", fontproperties=font_prop)
     ax.legend(prop=font_prop)
-    st.pyplot(fig)    
-        
-        # -------------------------------
-        # 介入フェーズ（またはその他フェーズ）の切替点があれば、垂直線で表示
-    if 'フェーズ' in df_filtered.columns:
-            # データを日時順にソートし、フェーズの切替点を抽出
-            df_sorted = df_filtered.sort_values("日時")
-            phase_boundaries = []
-            previous_phase = df_sorted['フェーズ'].iloc[0]
-            for idx, row in df_sorted.iterrows():
-                current_phase = row['フェーズ']
-                if current_phase != previous_phase:
-                    phase_boundaries.append(row['日時'])
-                    previous_phase = current_phase
-            # グラフに境界線を描画
-            for boundary in phase_boundaries:
-                ax.axvline(boundary.date(), color='red', linestyle='--', alpha=0.7)
-            st.write("※ 赤い破線はフェーズ切替点を示しています。")
-        
-    ax.set_xlabel("日付")
-    ax.set_ylabel("頻度")
-    ax.set_title("日付別 行動頻度の推移")
-    ax.legend()
     st.pyplot(fig)
-    st.write("""
-**図の見方：**
-- **横軸：** 日付  
-- **縦軸：** 指定期間内の各対象行動の発生頻度の合計  
-- 複数の線がそれぞれの対象行動を示し、線の上昇はその行動が頻発していることを意味します。  
-- 赤い破線は、フェーズ（例：介入前→介入後）の切替点を表しています。
-""")
-    else:
+    
+    # フェーズの境界線を追加
+    if 'フェーズ' in df_filtered.columns:
+        df_sorted = df_filtered.sort_values("日時")
+        phase_boundaries = []
+        previous_phase = df_sorted['フェーズ'].iloc[0]
+        for idx, row in df_sorted.iterrows():
+            current_phase = row['フェーズ']
+            if current_phase != previous_phase:
+                phase_boundaries.append(row['日時'])
+                previous_phase = current_phase
+        for boundary in phase_boundaries:
+            ax.axvline(boundary.date(), color='red', linestyle='--', alpha=0.7)
+        st.write("※ 赤い破線はフェーズ切替点を示しています。")
+
+else:
     st.warning("『対象行動』および『頻度』の列が見つかりません。")
+
+
 
     # -------------------------------
     # ② 各対象行動の割合（全データに対する各行動の出現割合）
