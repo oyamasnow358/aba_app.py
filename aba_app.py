@@ -140,12 +140,7 @@ if uploaded_file is not None:
                 ax.axvline(boundary.date(), color='red', linestyle='--', alpha=0.7)
             st.write("※ 赤い破線はフェーズ切替点を示しています。")
         
-        ax.set_xlabel("日付")
-        ax.set_ylabel("頻度")
-        ax.set_title("日付別 行動頻度の推移")
-        ax.legend()
-        st.pyplot(fig)
-        st.write("""
+            st.write("""
 **図の見方：**
 - **横軸：** 日付  
 - **縦軸：** 指定期間内の各対象行動の発生頻度の合計  
