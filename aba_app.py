@@ -111,9 +111,10 @@ if uploaded_file is not None:
             data = freq_df[freq_df['対象行動'] == behavior]
             ax.plot(data['日付'], data['頻度'], marker='o', label=behavior)
 
-        ax.set_xlabel("日付", fontproperties=font_prop)
-        ax.set_ylabel("頻度", fontproperties=font_prop)
-        ax.set_title("日付別 行動頻度の推移", fontproperties=font_prop)
+        ax.set_xlabel("日付", fontproperties=font_prop if 'font_prop' in locals() else None)
+        ax.set_ylabel("頻度", fontproperties=font_prop if 'font_prop' in locals() else None)
+        ax.set_title("日付別 行動頻度の推移", fontproperties=font_prop if 'font_prop' in locals() else None)
+
         ax.legend(prop=font_prop)
 
         # フェーズの境界線を追加
