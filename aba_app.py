@@ -111,21 +111,22 @@ if uploaded_file is not None:
         st.dataframe(freq_df.head())
 
         # グラフ描画（例: 折れ線グラフ）
-    # グラフ描画部分の修正（直接FontPropertiesを指定）
-        fig, ax = plt.subplots(figsize=(10, 5))
-        for behavior in freq_df['対象行動'].unique():
-         data = freq_df[freq_df['対象行動'] == behavior]
-         ax.plot(data['日付'], data['頻度'], marker='o', label=behavior)
-        # 軸やラベル、タイトルにFontPropertiesを明示的に指定
-        ax.set_xlabel("日付", fontproperties=font_prop)
-        ax.set_ylabel("頻度", fontproperties=font_prop)
-        ax.set_title("日付別 行動頻度の推移", fontproperties=font_prop)
-        ax.legend(prop=font_prop)
+          #グラフ描画部分の修正（直接FontPropertiesを指定）
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for behavior in freq_df['対象行動'].unique():
+        data = freq_df[freq_df['対象行動'] == behavior]
+        ax.plot(data['日付'], data['頻度'], marker='o', label=behavior)
 
-        st.pyplot(fig)
+# 軸やラベル、タイトルにFontPropertiesを明示的に指定
+    ax.set_xlabel("日付", fontproperties=font_prop)
+    ax.set_ylabel("頻度", fontproperties=font_prop)
+    ax.set_title("日付別 行動頻度の推移", fontproperties=font_prop)
+    ax.legend(prop=font_prop)
+    st.pyplot(fig)    
+        
         # -------------------------------
         # 介入フェーズ（またはその他フェーズ）の切替点があれば、垂直線で表示
-        if 'フェーズ' in df_filtered.columns:
+    if 'フェーズ' in df_filtered.columns:
             # データを日時順にソートし、フェーズの切替点を抽出
             df_sorted = df_filtered.sort_values("日時")
             phase_boundaries = []
@@ -140,12 +141,12 @@ if uploaded_file is not None:
                 ax.axvline(boundary.date(), color='red', linestyle='--', alpha=0.7)
             st.write("※ 赤い破線はフェーズ切替点を示しています。")
         
-        ax.set_xlabel("日付")
-        ax.set_ylabel("頻度")
-        ax.set_title("日付別 行動頻度の推移")
-        ax.legend()
-        st.pyplot(fig)
-        st.write("""
+    ax.set_xlabel("日付")
+    ax.set_ylabel("頻度")
+    ax.set_title("日付別 行動頻度の推移")
+    ax.legend()
+    st.pyplot(fig)
+    st.write("""
 **図の見方：**
 - **横軸：** 日付  
 - **縦軸：** 指定期間内の各対象行動の発生頻度の合計  
@@ -153,7 +154,7 @@ if uploaded_file is not None:
 - 赤い破線は、フェーズ（例：介入前→介入後）の切替点を表しています。
 """)
     else:
-        st.warning("『対象行動』および『頻度』の列が見つかりません。")
+    st.warning("『対象行動』および『頻度』の列が見つかりません。")
 
     # -------------------------------
     # ② 各対象行動の割合（全データに対する各行動の出現割合）
