@@ -5,7 +5,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from io import StringIO
 from datetime import datetime
+import matplotlib.font_manager as fm
 
+# 日本語フォントのパスを指定
+font_path = "C:/Users/taka/OneDrive/デスクトップ/アプリ開発/応用行動分析/aba_app/ipaexg.ttf"  # フォントのパスを適宜変更
+font_prop = fm.FontProperties(fname=font_path)
+plt.rcParams["font.family"] = font_prop.get_name()
 # ------------------------------------------
 # CSVテンプレート作成用の文字列（例）
 template_csv = """このCSVファイルは、応用行動分析のデータひな形です。"
@@ -101,11 +106,17 @@ if uploaded_file is not None:
         freq_df = df_filtered.groupby(['日付', '対象行動'])['頻度'].sum().reset_index()
         st.dataframe(freq_df.head())
 
-        # グラフ描画（対象行動別に折れ線グラフ）
-        fig, ax = plt.subplots(figsize=(10, 5))
-        for behavior in freq_df['対象行動'].unique():
-            data = freq_df[freq_df['対象行動'] == behavior]
-            ax.plot(data['日付'], data['頻度'], marker='o', label=behavior)
+        # グラフ描画（例: 折れ線グラフ）
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for behavior in freq_df['対象行動'].unique():
+        data = freq_df[freq_df['対象行動'] == behavior]
+        ax.plot(data['日付'], data['頻度'], marker='o', label=behavior)
+
+        ax.set_xlabel("日付")
+        ax.set_ylabel("頻度")
+        ax.set_title("日付別 行動頻度の推移")
+        ax.legend()
+        st.pyplot(fig)
         
         # -------------------------------
         # 介入フェーズ（またはその他フェーズ）の切替点があれば、垂直線で表示
