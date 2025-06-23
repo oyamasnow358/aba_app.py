@@ -11,7 +11,6 @@ st.set_page_config(
 )
 
 # --- CSVテンプレート ---
-# 注: skiprows=14 は15行目から読み込むことを意味するため、説明文と合わせる
 template_csv = """このCSVファイルは、応用行動分析のデータひな形です。
 "説明は14行目まで続きます。15行目以降に実際のデータを入力してください。"
 '【各列の説明】
@@ -67,14 +66,19 @@ try:
     # テンプレートに合わせて14行をスキップ
     df = pd.read_csv(uploaded_file, skiprows=14, encoding='utf-8-sig')
     
-    # 日時列の変換
+    # ★★★★★ 修正点1: 列名の前後の空白を自動で削除 ★★★★★
+    df.columns = df.columns.str.strip()
+
+    # 日時列の存在チェックと変換
     if '日時' in df.columns:
         df['日時'] = pd.to_datetime(df['日時'], errors='coerce')
         if df['日時'].isnull().any():
-            st.warning("⚠️ '日時'列に変換できない値が含まれています。その行は無視されます。")
+            st.warning("⚠️ '日時'列に日付として変換できない値が含まれています。その行は分析から除外されます。")
             df.dropna(subset=['日時'], inplace=True)
     else:
-        st.error("❌ '日時'列が見つかりません。テンプレートに従ってファイルを作成してください。")
+        # ★★★★★ 修正点2: エラーメッセージを具体的にして原因究明を助ける ★★★★★
+        st.error(f"❌ '日時'列が見つかりません。テンプレートに従ってファイルを作成してください。")
+        st.info(f"💡 **実際に読み込まれた列名:** `{list(df.columns)}`\n\nCSVファイルの15行目がヘッダー（列名）になっているか、ご確認ください。")
         st.stop()
 
 except Exception as e:
@@ -85,13 +89,16 @@ except Exception as e:
 with st.sidebar:
     st.header("3. 分析条件の設定")
     
-    # 対象行動の選択
-    behavior_options = df['対象行動'].unique()
-    selected_behaviors = st.multiselect(
-        "分析する対象行動を選択",
-        options=behavior_options,
-        default=behavior_options
-    )
+    if '対象行動' in df.columns:
+        behavior_options = df['対象行動'].unique()
+        selected_behaviors = st.multiselect(
+            "分析する対象行動を選択",
+            options=behavior_options,
+            default=behavior_options
+        )
+    else:
+        st.warning("'対象行動' 列が見つかりません。")
+        selected_behaviors = []
     
     # 分析期間の選択
     min_date = df['日時'].min().date()
@@ -214,20 +221,25 @@ report_text += "--------------------------------------\n\n"
 # フェーズごとの集計
 if 'フェーズ' in df_filtered.columns:
     report_text += "■ フェーズ別サマリー\n"
-    phase_summary = df_filtered.groupby('フェーズ').agg(
-        件数=('日時', 'count'),
-        総頻度=('頻度', 'sum') if '頻度' in df else ('日時', lambda x: 'N/A'),
-        総持続時間_分=('持続時間(分)', 'sum') if '持続時間(分)' in df else ('日時', lambda x: 'N/A'),
-        平均強度=('強度', 'mean') if '強度' in df else ('日時', lambda x: 'N/A')
-    ).reset_index()
+    df_agg = df_filtered.copy()
+    # 数値でない列は集計から除外
+    numeric_cols = df_agg.select_dtypes(include=['number']).columns
+    agg_dict = {}
+    if '頻度' in numeric_cols: agg_dict['総頻度'] = ('頻度', 'sum')
+    if '持続時間(分)' in numeric_cols: agg_dict['総持続時間_分'] = ('持続時間(分)', 'sum')
+    if '強度' in numeric_cols: agg_dict['平均強度'] = ('強度', 'mean')
+    agg_dict['件数'] = ('日時', 'count')
 
-    for _, row in phase_summary.iterrows():
-        report_text += f"【{row['フェーズ']}】\n"
-        report_text += f"  - データ件数: {row['件数']}件\n"
-        if '頻度' in df: report_text += f"  - 総頻度: {row['総頻度']:,} 回\n"
-        if '持続時間(分)' in df: report_text += f"  - 総持続時間: {row['総持続時間_分']:.1f} 分\n"
-        if '強度' in df: report_text += f"  - 平均強度: {row['平均強度']:.2f}\n"
-        report_text += "\n"
+    if agg_dict:
+        phase_summary = df_agg.groupby('フェーズ').agg(**agg_dict).reset_index()
+
+        for _, row in phase_summary.iterrows():
+            report_text += f"【{row['フェーズ']}】\n"
+            report_text += f"  - データ件数: {row['件数']}件\n"
+            if '総頻度' in row: report_text += f"  - 総頻度: {row['総頻度']:,} 回\n"
+            if '総持続時間_分' in row: report_text += f"  - 総持続時間: {row['総持続時間_分']:.1f} 分\n"
+            if '平均強度' in row: report_text += f"  - 平均強度: {row['平均強度']:.2f}\n"
+            report_text += "\n"
 
 report_text += "■ 自由記述欄\n\n\n"
 
