@@ -5,35 +5,45 @@ from datetime import datetime
 
 # --- ページ設定 ---
 st.set_page_config(
-    page_title="応用行動分析(ABA)データ可視化アプリ",
+    page_title="ABA データ可視化アプリ (Advanced)",
     page_icon="📈",
     layout="wide",
 )
 
-# --- シンプルなCSVテンプレート ---
+# --- 改善されたCSVテンプレート（効果が明確なデータ） ---
+# ベースライン（10/1-10/7）: 頻度が高い
+# 介入期（10/8-10/14）: 頻度が激減する
 template_csv = """ID,日時,対象行動,頻度,持続時間(分),強度,フェーズ,備考
-1,2023-10-01 10:00,自傷行為,3,5,4,ベースライン,課題中
-2,2023-10-01 14:30,要求行動,5,1,2,ベースライン,おやつの時間
-3,2023-10-08 10:15,自傷行為,1,2,2,介入期,支援者が介入
-4,2023-10-08 14:45,要求行動,8,1,1,介入期,ジェスチャー使用
+1,2023-10-01 10:00,自傷行為,5,10,4,ベースライン,
+2,2023-10-02 11:00,自傷行為,6,12,5,ベースライン,
+3,2023-10-03 14:00,自傷行為,8,15,5,ベースライン,悪天候
+4,2023-10-04 10:30,自傷行為,5,8,4,ベースライン,
+5,2023-10-05 09:00,自傷行為,7,10,5,ベースライン,
+6,2023-10-06 15:00,自傷行為,9,20,5,ベースライン,
+7,2023-10-07 12:00,自傷行為,8,15,5,ベースライン,
+8,2023-10-08 10:00,自傷行為,3,5,3,介入期,介入開始（トークン）
+9,2023-10-09 11:00,自傷行為,2,3,2,介入期,
+10,2023-10-10 14:00,自傷行為,1,1,1,介入期,
+11,2023-10-11 10:00,自傷行為,1,1,1,介入期,
+12,2023-10-12 09:00,自傷行為,0,0,0,介入期,発生なし
+13,2023-10-13 15:00,自傷行為,1,2,1,介入期,
+14,2023-10-14 12:00,自傷行為,0,0,0,介入期,
 """
 
 # --- メイン画面 ---
 st.title("📈 応用行動分析 (ABA) データ可視化アプリ")
-st.write("行動データを時系列で可視化し、介入の効果を分析します。")
+st.markdown("""
+行動データを可視化し、介入の効果を分析します。
+**ABA（単一事例設計）**の原則に基づき、フェーズごとの傾向線や日次集計機能を提供します。
+""")
 
 # --- サイドバー ---
 with st.sidebar:
     st.header("1. データ準備")
-    st.markdown("""
-    以下のボタンからテンプレートをダウンロードし、ご自身のデータに書き換えてください。
-    - **1行目**は必ず**ヘッダー（列名）**にしてください。
-    - **2行目**から**実際のデータ**を入力してください。
-    """)
     st.download_button(
-        label="📄 CSVテンプレートをダウンロード",
+        label="📄 明確な変化があるサンプルCSVをDL",
         data=template_csv.encode('utf-8-sig'),
-        file_name="aba_template_simple.csv",
+        file_name="aba_sample_clear.csv",
         mime="text/csv"
     )
     
@@ -45,7 +55,7 @@ with st.sidebar:
     )
 
 if uploaded_file is None:
-    st.info("👈 サイドバーからCSVファイルをアップロードすると、分析が開始されます。")
+    st.info("👈 サイドバーからCSVファイルをアップロードするか、サンプルをDLしてそのままアップロードしてください。")
     st.stop()
 
 # --- データ読み込みと前処理 ---
@@ -55,150 +65,140 @@ try:
 
     if '日時' in df.columns:
         df['日時'] = pd.to_datetime(df['日時'], errors='coerce')
-        if df['日時'].isnull().any():
-            st.warning("⚠️ '日時'列に日付として変換できない値が含まれています。その行は分析から除外されます。")
-            df.dropna(subset=['日時'], inplace=True)
+        df.dropna(subset=['日時'], inplace=True)
+        # 日付のみの列を作成（集計用）
+        df['日付'] = df['日時'].dt.date
     else:
-        st.error(f"❌ '日時'列が見つかりません。テンプレートに従ってファイルを作成してください。")
-        st.info(f"💡 **実際に読み込まれた列名:** `{list(df.columns)}`\n\nCSVファイルの1行目がヘッダー（列名）になっているか、ご確認ください。")
+        st.error("❌ '日時'列が見つかりません。")
         st.stop()
 
 except Exception as e:
     st.error(f"❌ ファイル読み込みエラー: {e}")
     st.stop()
 
-# --- サイドバーでの分析条件設定 ---
+# --- 分析条件設定 ---
 with st.sidebar:
     st.header("3. 分析条件の設定")
     
+    # 対象行動の選択
     if '対象行動' in df.columns:
-        behavior_options = df['対象行動'].unique()
-        selected_behaviors = st.multiselect(
-            "分析する対象行動を選択", options=behavior_options, default=behavior_options
-        )
+        all_behaviors = df['対象行動'].unique()
+        selected_behavior = st.selectbox("分析する対象行動を選択（単一選択推奨）", all_behaviors)
     else:
-        st.warning("'対象行動' 列が見つかりません。")
-        selected_behaviors = []
+        selected_behavior = None
     
-    min_date = df['日時'].min().date()
-    max_date = df['日時'].max().date()
-    start_date, end_date = st.date_input(
-        "分析期間を選択", value=(min_date, max_date), min_value=min_date, max_value=max_date
-    )
-    
-    start_datetime = datetime.combine(start_date, datetime.min.time())
-    end_datetime = datetime.combine(end_date, datetime.max.time())
+    # 日次集計スイッチ（ABA重要機能）
+    st.markdown("---")
+    st.write("📊 **表示オプション**")
+    use_daily_agg = st.checkbox("日次で集計する（推奨）", value=True, help="チェックすると1日ごとの合計・平均を計算します。全体の傾向がつかみやすくなります。")
+    split_phase_line = st.checkbox("フェーズごとに線を分ける", value=True, help="ベースラインと介入期の線を視覚的に切断します。")
 
 # データのフィルタリング
-df_filtered = df[
-    (df['対象行動'].isin(selected_behaviors)) &
-    (df['日時'] >= start_datetime) &
-    (df['日時'] <= end_datetime)
-].copy()
+df_target = df[df['対象行動'] == selected_behavior].copy()
 
-if df_filtered.empty:
-    st.warning("⚠️ 選択された条件に一致するデータがありません。")
+if df_target.empty:
+    st.warning("データがありません。")
     st.stop()
 
-st.success(f"✅ データ読み込み完了！ **{len(df_filtered)}件**のデータを分析します。")
+# --- データの集計処理（ロジックの改善点） ---
+if use_daily_agg:
+    # 日付とフェーズでグループ化
+    # 頻度・持続時間は「合計(sum)」、強度は「平均(mean)」が一般的
+    agg_rules = {}
+    if '頻度' in df_target.columns: agg_rules['頻度'] = 'sum'
+    if '持続時間(分)' in df_target.columns: agg_rules['持続時間(分)'] = 'sum'
+    if '強度' in df_target.columns: agg_rules['強度'] = 'mean'
+    
+    # フェーズが変わる日がある場合を考慮し、フェーズも含めてグループ化
+    df_plot = df_target.groupby(['日付', 'フェーズ']).agg(agg_rules).reset_index()
+    x_col = '日付'
+    hover_data = ['フェーズ']
+    st.success(f"✅ **日次集計モード** で表示中: {len(df_plot)}日分のデータ")
+else:
+    df_plot = df_target.sort_values('日時')
+    x_col = '日時'
+    hover_data = ['フェーズ', '備考'] if '備考' in df_target.columns else ['フェーズ']
+    st.info("ℹ️ **詳細モード** で表示中: 全ての記録ポイントを表示")
 
-with st.expander("プレビュー: 分析対象データ"):
-    st.dataframe(df_filtered)
-
+# --- グラフ描画 ---
 st.markdown("---")
-st.header("📊 分析結果")
+st.subheader(f"「{selected_behavior}」の推移グラフ")
 
-# 1. 時系列グラフ
-st.subheader("行動データの時系列グラフ")
 y_axis_option = st.selectbox(
-    "グラフの縦軸を選択してください",
-    [col for col in ['頻度', '持続時間(分)', '強度'] if col in df_filtered.columns]
+    "縦軸を選択",
+    [col for col in ['頻度', '持続時間(分)', '強度'] if col in df_plot.columns]
 )
 
 if y_axis_option:
-    fig_time = px.line(
-        df_filtered, x='日時', y=y_axis_option, color='対象行動', markers=True,
-        title=f'{y_axis_option}の時系列推移',
-        labels={'日時': '日付', y_axis_option: y_axis_option, '対象行動': '行動の種類'}
-    )
-    fig_time.update_layout(legend_title_text='行動の種類')
+    # ABAグラフの作成
+    # フェーズごとに線を分けるために `color` または `group` を使用するテクニック
+    if split_phase_line:
+        # フェーズを色分け（またはグループ化）に使用して線を分断する
+        fig_time = px.line(
+            df_plot, 
+            x=x_col, 
+            y=y_axis_option, 
+            color='フェーズ',  # これによりフェーズ間で線が切れる
+            markers=True,
+            symbol='フェーズ', # 形も変えて見やすくする
+            title=f'{selected_behavior}：{y_axis_option}の推移（フェーズ比較）',
+        )
+    else:
+        # 全体をつなげて表示
+        fig_time = px.line(
+            df_plot, 
+            x=x_col, 
+            y=y_axis_option, 
+            markers=True,
+            title=f'{selected_behavior}：{y_axis_option}の推移',
+        )
+        # フェーズ変更線の追加（つながっている場合のみ垂直線が役立つ）
+        if 'フェーズ' in df_plot.columns:
+            # 日付順にソートしてフェーズの変わり目を探す
+            df_sorted = df_plot.sort_values(x_col)
+            # フェーズが変わる行を特定
+            phase_changes = df_sorted[df_sorted['フェーズ'] != df_sorted['フェーズ'].shift(1)]
+            # 最初の行以外（変わり目）に線を引く
+            for i, row in phase_changes.iterrows():
+                if i != df_sorted.index[0]: # データの先頭は除外
+                    fig_time.add_vline(
+                        x=row[x_col], line_width=2, line_dash="dash", line_color="red",
+                        annotation_text="フェーズ変更", annotation_position="top left"
+                    )
 
-    # ★★★★★ ここからがエラー修正箇所 ★★★★★
-    if 'フェーズ' in df_filtered.columns:
-        df_sorted = df_filtered.sort_values("日時").dropna(subset=['フェーズ'])
-        phase_changes = df_sorted[df_sorted['フェーズ'] != df_sorted['フェーズ'].shift(1)]
-        for _, row in phase_changes.iterrows():
-            # 手順1: 線だけを描画する
-            fig_time.add_vline(
-                x=row['日時'], line_width=2, line_dash="dash", line_color="gray"
-            )
-            # 手順2: テキスト注釈を別途追加する
-            fig_time.add_annotation(
-                x=row['日時'], y=1.05, yref="paper",
-                text=f"「{row['フェーズ']}」開始",
-                showarrow=False, xanchor="left",
-                font=dict(color="gray", size=12)
-            )
-    # ★★★★★ ここまでがエラー修正箇所 ★★★★★
-            
+    fig_time.update_layout(xaxis_title="日時", yaxis_title=y_axis_option)
     st.plotly_chart(fig_time, use_container_width=True)
-else:
-    st.warning("分析可能な数値列（頻度、持続時間(分)、強度）が見つかりません。")
 
-# --- (これ以降のコードは変更なし) ---
-
-# 2. サマリー統計
-st.subheader("サマリー統計")
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.write("**行動の発生件数割合**")
-    behavior_counts = df_filtered['対象行動'].value_counts().reset_index()
-    behavior_counts.columns = ['対象行動', '件数']
-    fig_pie = px.pie(behavior_counts, names='対象行動', values='件数', hole=0.4)
-    fig_pie.update_traces(textposition='inside', textinfo='percent+label')
-    fig_pie.update_layout(showlegend=False, margin=dict(t=0, b=0, l=0, r=0))
-    st.plotly_chart(fig_pie, use_container_width=True)
-with col2:
-    st.write("**頻度・持続時間の合計**")
-    if '頻度' in df_filtered.columns:
-        col2.metric(label="総頻度（回）", value=f"{df_filtered['頻度'].sum():,.0f}")
-    if '持続時間(分)' in df_filtered.columns:
-        col2.metric(label="総持続時間（分）", value=f"{df_filtered['持続時間(分)'].sum():,.1f}")
-with col3:
-    st.write("**強度・持続時間の平均**")
-    if '強度' in df_filtered.columns:
-        col3.metric(label="平均強度", value=f"{df_filtered['強度'].mean():.2f}")
-    if '持続時間(分)' in df_filtered.columns:
-        col3.metric(label="平均持続時間（分/回）", value=f"{df_filtered['持続時間(分)'].mean():.1f}")
-
-# 3. 分析レポート
-st.markdown("---")
-st.header("📝 分析結果レポート")
-report_text = f"【応用行動分析レポート】\n"
-report_text += f"分析期間: {start_date.strftime('%Y/%m/%d')} ～ {end_date.strftime('%Y/%m/%d')}\n"
-report_text += f"分析対象の行動: {', '.join(selected_behaviors)}\n"
-report_text += "--------------------------------------\n\n"
-if 'フェーズ' in df_filtered.columns:
-    report_text += "■ フェーズ別サマリー\n"
-    df_agg = df_filtered.copy()
-    numeric_cols = df_agg.select_dtypes(include=['number']).columns
-    agg_dict = {'件数': ('日時', 'count')}
-    if '頻度' in numeric_cols: agg_dict['総頻度'] = ('頻度', 'sum')
-    if '持続時間(分)' in numeric_cols: agg_dict['総持続時間_分'] = ('持続時間(分)', 'sum')
-    if '強度' in numeric_cols: agg_dict['平均強度'] = ('強度', 'mean')
+    # --- 解説と解釈 ---
+    st.markdown("#### 💡 視覚的分析のポイント")
+    col_a, col_b = st.columns(2)
     
-    if agg_dict:
-        phase_summary = df_agg.groupby('フェーズ').agg(**agg_dict).reset_index()
-        for _, row in phase_summary.iterrows():
-            report_text += f"【{row['フェーズ']}】\n"
-            report_text += f"  - データ件数: {row['件数']}件\n"
-            if '総頻度' in row: report_text += f"  - 総頻度: {row['総頻度']:,} 回\n"
-            if '総持続時間_分' in row: report_text += f"  - 総持続時間: {row['総持続時間_分']:.1f} 分\n"
-            if '平均強度' in row: report_text += f"  - 平均強度: {row['平均強度']:.2f}\n"
-            report_text += "\n"
-report_text += "■ 自由記述欄\n\n\n"
-st.text_area("レポート内容（編集・追記が可能です）", report_text, height=300)
-st.download_button(
-    "📩 レポートをテキストファイルでダウンロード", report_text.encode('utf-8-sig'),
-    f"aba_analysis_report_{datetime.now().strftime('%Y%m%d')}.txt", "text/plain"
-)
+    # ベースラインと介入期の平均値を計算して比較
+    if 'フェーズ' in df_plot.columns:
+        means = df_plot.groupby('フェーズ')[y_axis_option].mean()
+        # ベースラインと介入期の値があれば比較表示
+        if 'ベースライン' in means and '介入期' in means:
+            diff = means['介入期'] - means['ベースライン']
+            ratio = (means['介入期'] / means['ベースライン']) * 100 if means['ベースライン'] != 0 else 0
+            
+            with col_a:
+                st.metric(
+                    label="ベースライン期 平均",
+                    value=f"{means['ベースライン']:.2f}"
+                )
+            with col_b:
+                st.metric(
+                    label="介入期 平均",
+                    value=f"{means['介入期']:.2f}",
+                    delta=f"{diff:.2f} ({ratio:.0f}%)",
+                    delta_color="inverse" # 減少が良いこととして緑色表示（逆ならnormal）
+                )
+            
+            st.info(
+                f"**分析結果:** ベースライン期と比較して、介入期では数値が **{abs(diff):.2f} ポイント{'減少' if diff < 0 else '増加'}** しています。\n"
+                f"これが意図した変化であれば、介入に効果があった可能性が示唆されます。"
+            )
+
+# --- レポート機能（簡易版） ---
+with st.expander("📝 統計データを見る"):
+    st.dataframe(df_plot)
